@@ -1,4 +1,9 @@
 package com.example.banco.dto.request;
 
-public record DepositoRequestDTO() {
+import java.math.BigDecimal;
+
+public record DepositoRequestDTO(
+        Long idCuenta,
+        BigDecimal monto
+) {
 }

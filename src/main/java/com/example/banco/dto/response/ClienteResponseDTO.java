@@ -1,4 +1,12 @@
 package com.example.banco.dto.response;
 
-public class ClienteResponseDTO {
+public record ClienteResponseDTO (
+        Long id,
+        String nombre,
+        String dni,
+        String email,
+        String telefono,
+        String estado,
+        int CantidadCuentas
+){
 }

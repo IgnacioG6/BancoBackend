@@ -1,4 +1,9 @@
-package com.example.banco.dto;
+package com.example.banco.dto.request;
 
-public record ClienteRequestDTO() {
+public record ClienteRequestDTO(
+        String nombre,
+        String dni,
+        String email,
+        String telefono
+) {
 }
