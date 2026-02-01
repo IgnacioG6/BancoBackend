@@ -7,9 +7,9 @@ public record TransaccionResponseDTO(
         String tipoTransaccion,
         String estadoTransaccion,
         LocalDateTime fechaHora,
-        String idCuentaOrigen,
+        Long  idCuentaOrigen,
         String nroCuentaOrigen,
-        String idCuentaDestino,
+        Long idCuentaDestino,
         String nroCuentaDestino,
         String descripcion
 
