@@ -7,6 +7,7 @@ import com.example.banco.mapper.ClienteMapper;
 import com.example.banco.model.Cliente;
 import com.example.banco.model.enums.EstadoCliente;
 import com.example.banco.repository.ClienteRepository;
+import com.example.banco.service.interfaces.IClienteService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -14,7 +15,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class ClienteService {
+public class ClienteService implements IClienteService {
 
     private final ClienteRepository clienteRepository;
 

@@ -7,10 +7,10 @@ import com.example.banco.exception.EstadoInvalidoException;
 import com.example.banco.mapper.CuentaMapper;
 import com.example.banco.model.Cliente;
 import com.example.banco.model.Cuenta;
-import com.example.banco.model.enums.EstadoCliente;
 import com.example.banco.model.enums.EstadoCuenta;
 import com.example.banco.repository.ClienteRepository;
 import com.example.banco.repository.CuentaRepository;
+import com.example.banco.service.interfaces.ICuentaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,7 +18,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class CuentaService {
+public class CuentaService implements ICuentaService {
     private final CuentaRepository cuentaRepository;
     private final ClienteRepository clienteRepository;
 

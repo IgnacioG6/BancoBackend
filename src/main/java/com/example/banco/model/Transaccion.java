@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -27,6 +28,8 @@ public class Transaccion {
     EstadoTransaccion estadoTransaccion;
 
     LocalDateTime fechaHora;
+
+    BigDecimal monto;
 
     @ManyToOne
     @JoinColumn(name = "cuenta_origen_id")
