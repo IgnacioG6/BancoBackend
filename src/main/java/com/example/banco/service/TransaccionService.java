@@ -14,18 +14,22 @@ import com.example.banco.model.enums.EstadoTransaccion;
 import com.example.banco.model.enums.TipoTransaccion;
 import com.example.banco.repository.CuentaRepository;
 import com.example.banco.repository.TransaccionRepository;
+import com.example.banco.service.interfaces.ITransaccionService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class TransaccionService {
+public class TransaccionService implements ITransaccionService {
     private final TransaccionRepository transaccionRepository;
     private final CuentaRepository cuentaRepository;
 
+    @Transactional
     public TransaccionResponseDTO depositar(DepositoRequestDTO depositoDto) {
         Cuenta cuenta = cuentaRepository.findById(depositoDto.idCuenta())
                 .orElseThrow(() -> new EntidadNoEncontradaException("Cuenta no encontrada con id: " + depositoDto.idCuenta()));
@@ -66,7 +70,7 @@ public class TransaccionService {
         }
     }
 
-
+    @Transactional
     public TransaccionResponseDTO retirar(RetiroRequestDTO retiroDto) {
         Cuenta cuenta = cuentaRepository.findById(retiroDto.idCuenta())
                 .orElseThrow(() -> new EntidadNoEncontradaException("Cuenta no encontrada con id: " + retiroDto.idCuenta()));
@@ -105,7 +109,7 @@ public class TransaccionService {
         }
     }
 
-
+    @Transactional
     public TransaccionResponseDTO transferir(TransferenciaRequestDTO transferenciaDto) {
         Cuenta cuentaDestino = cuentaRepository.findById(transferenciaDto.idCuentaDestino())
                 .orElseThrow(() -> new EntidadNoEncontradaException("Cuenta no encontrada con id: " + transferenciaDto.idCuentaDestino()));
@@ -130,7 +134,7 @@ public class TransaccionService {
     }
 
 
-    public void validarTransferencia(BigDecimal monto, Cuenta cuentaDestino, Cuenta cuentaOrigen) {
+    private void validarTransferencia(BigDecimal monto, Cuenta cuentaDestino, Cuenta cuentaOrigen) {
 
         if (cuentaDestino.equals(cuentaOrigen)) {
             throw new ValidacionException("No se puede transferir a uno mismo");
@@ -144,7 +148,7 @@ public class TransaccionService {
         validarSaldo(monto, cuentaOrigen);
     }
 
-    public Transaccion crearTransaccionTransferencia(TransferenciaRequestDTO transferenciaDto,
+    private Transaccion crearTransaccionTransferencia(TransferenciaRequestDTO transferenciaDto,
                                                      Cuenta cuentaDestino,Cuenta cuentaOrigen)
     {
         Transaccion transaccion = new Transaccion();
@@ -158,4 +162,30 @@ public class TransaccionService {
         return transaccion;
 
     }
+
+    public TransaccionResponseDTO buscarPorId(Long id){
+        Transaccion transaccion = transaccionRepository.findById(id)
+                .orElseThrow(()-> new EntidadNoEncontradaException("Transaccion no encontrada con id: " + id));
+
+        return  TransaccionMapper.toResponseDto(transaccion);
+    }
+
+    public List<TransaccionResponseDTO> listarTransacciones(){
+        return transaccionRepository.findAll().stream()
+                .map(TransaccionMapper::toResponseDto)
+                .toList();
+    }
+
+    public List<TransaccionResponseDTO> listarTransaccionesPorCuenta(Long idCuenta){
+        return transaccionRepository.findByCuentaId(idCuenta).stream()
+                .map(TransaccionMapper::toResponseDto)
+                .toList();
+    }
+
+    public List<TransaccionResponseDTO> listarTransaccionesPorEstado(EstadoTransaccion estado){
+        return transaccionRepository.findByEstado(estado).stream()
+                .map(TransaccionMapper::toResponseDto)
+                .toList();
+    }
+
 }
