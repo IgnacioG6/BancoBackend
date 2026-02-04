@@ -25,7 +25,7 @@ public class Transaccion {
     TipoTransaccion tipoTransaccion;
 
     @Enumerated(EnumType.STRING)
-    EstadoTransaccion estadoTransaccion;
+    EstadoTransaccion estado;
 
     LocalDateTime fechaHora;
 

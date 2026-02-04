@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 @Entity
 @Table(name = "cuentas")
@@ -21,21 +20,23 @@ public class Cuenta {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    String nroCuenta;
+    private String nroCuenta;
 
     @Enumerated(EnumType.STRING)
-    EstadoCuenta estadoCuenta;
+    private EstadoCuenta estadoCuenta;
 
     @Enumerated(EnumType.STRING)
-    TipoCuenta tipoCuenta;
+    private TipoCuenta tipoCuenta;
 
     @ManyToOne
     @JoinColumn(name = "cliente_id")
-    Cliente cliente;
+    private Cliente cliente;
 
-    @OneToMany(mappedBy = "cuenta", fetch = FetchType.LAZY)
-    List<Transaccion> transacciones;
+    private BigDecimal limiteRetiroDiario;
+    private BigDecimal saldoMinimo;
+    private BigDecimal montoMinimoApertura;
+    private BigDecimal limiteTransferencia;
 
-    BigDecimal saldo = BigDecimal.ZERO;
 
+    private BigDecimal saldo;
 }

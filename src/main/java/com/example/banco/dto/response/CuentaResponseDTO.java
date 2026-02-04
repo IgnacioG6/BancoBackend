@@ -9,8 +9,7 @@ public record CuentaResponseDTO (
         String estadoCuenta,
         Long idCliente,
         String nombreCliente,
-        BigDecimal saldo,
-        int CantidadTransacciones
+        BigDecimal saldo
 ){
 }
 

@@ -1,5 +1,6 @@
 package com.example.banco.dto.response;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record TransaccionResponseDTO(
@@ -11,6 +12,7 @@ public record TransaccionResponseDTO(
         String nroCuentaOrigen,
         Long idCuentaDestino,
         String nroCuentaDestino,
+        BigDecimal monto,
         String descripcion
 
 ){
