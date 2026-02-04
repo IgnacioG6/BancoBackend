@@ -4,6 +4,7 @@ import com.example.banco.dto.request.CuentaRequestDTO;
 import com.example.banco.dto.response.CuentaResponseDTO;
 import com.example.banco.exception.EntidadNoEncontradaException;
 import com.example.banco.exception.EstadoInvalidoException;
+import com.example.banco.exception.ValidacionException;
 import com.example.banco.mapper.CuentaMapper;
 import com.example.banco.model.Cliente;
 import com.example.banco.model.Cuenta;
@@ -11,9 +12,11 @@ import com.example.banco.model.enums.EstadoCuenta;
 import com.example.banco.repository.ClienteRepository;
 import com.example.banco.repository.CuentaRepository;
 import com.example.banco.service.interfaces.ICuentaService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -22,11 +25,14 @@ public class CuentaService implements ICuentaService {
     private final CuentaRepository cuentaRepository;
     private final ClienteRepository clienteRepository;
 
+    @Transactional
     public CuentaResponseDTO crearCuenta(CuentaRequestDTO cuentaDto) {
         Cliente cliente = clienteRepository.findById(cuentaDto.idCliente())
                 .orElseThrow(() -> new EntidadNoEncontradaException("Cliente no encontrado con id: " + cuentaDto.idCliente()));
 
         Cuenta cuenta = CuentaMapper.toEntity(cuentaDto, cliente);
+        validarApertura(cuenta.getMontoMinimoApertura(),cuentaDto.depositoInicial());
+        cuenta.setSaldo(cuentaDto.depositoInicial());
         cuentaRepository.save(cuenta);
         cuenta.setNroCuenta(String.format("CTA-%05d", cuenta.getId()));
 
@@ -34,6 +40,13 @@ public class CuentaService implements ICuentaService {
         cuentaRepository.save(cuenta);
         return CuentaMapper.toResponseDto(cuenta);
     }
+
+    public void validarApertura(BigDecimal montoMinimoApertura, BigDecimal depositoInicial) {
+        if (montoMinimoApertura.compareTo(depositoInicial) > 0) {
+            throw new ValidacionException("El depósito inicial es insuficiente. El mínimo requerido es $" + montoMinimoApertura);
+        }
+    }
+
 
     public CuentaResponseDTO buscarPorId(Long id) {
         Cuenta cuenta = cuentaRepository.findById(id)
@@ -50,7 +63,7 @@ public class CuentaService implements ICuentaService {
     }
 
     public List<CuentaResponseDTO> buscarPorCliente(Long id){
-        return cuentaRepository.findByIdCliente(id).stream().map(CuentaMapper::toResponseDto).toList();
+        return cuentaRepository.findByClienteId(id).stream().map(CuentaMapper::toResponseDto).toList();
     }
 
     public List<CuentaResponseDTO> listarCuentas(){
@@ -91,4 +104,5 @@ public class CuentaService implements ICuentaService {
             );
         }
     }
+
 }

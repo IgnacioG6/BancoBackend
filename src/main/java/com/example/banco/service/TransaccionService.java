@@ -20,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -37,7 +38,7 @@ public class TransaccionService implements ITransaccionService {
         validarEstadoCuenta(cuenta);
         Transaccion transaccion = crearTransaccionDeposito(depositoDto, cuenta);
         actualizarSaldoDeposito(depositoDto.monto(), cuenta);
-        transaccion.setEstadoTransaccion(EstadoTransaccion.COMPLETADA);
+        transaccion.setEstado(EstadoTransaccion.COMPLETADA);
 
 
         transaccionRepository.save(transaccion);
@@ -50,7 +51,7 @@ public class TransaccionService implements ITransaccionService {
     private Transaccion crearTransaccionDeposito(DepositoRequestDTO depositoDto, Cuenta cuenta) {
         Transaccion transaccion = new Transaccion();
         transaccion.setTipoTransaccion(TipoTransaccion.DEPOSITO);
-        transaccion.setEstadoTransaccion(EstadoTransaccion.PENDIENTE);
+        transaccion.setEstado(EstadoTransaccion.PENDIENTE);
         transaccion.setCuentaDestino(cuenta);
         transaccion.setCuentaOrigen(null);
         transaccion.setMonto(depositoDto.monto());
@@ -76,9 +77,11 @@ public class TransaccionService implements ITransaccionService {
                 .orElseThrow(() -> new EntidadNoEncontradaException("Cuenta no encontrada con id: " + retiroDto.idCuenta()));
 
         validarEstadoCuenta(cuenta);
+        validarSaldoRetiro(retiroDto.monto(), cuenta);
+        validarLimiteRetiroDiario(cuenta, retiroDto.monto());
         Transaccion transaccion = crearTransaccionRetiro(retiroDto, cuenta);
         actualizarSaldoRetiro(retiroDto.monto(), cuenta);
-        transaccion.setEstadoTransaccion(EstadoTransaccion.COMPLETADA);
+        transaccion.setEstado(EstadoTransaccion.COMPLETADA);
 
         transaccionRepository.save(transaccion);
         cuentaRepository.save(cuenta);
@@ -86,10 +89,43 @@ public class TransaccionService implements ITransaccionService {
         return TransaccionMapper.toResponseDto(transaccion);
     }
 
+    private void validarSaldoRetiro(BigDecimal monto, Cuenta cuenta) {
+        if (monto.compareTo(cuenta.getSaldo()) > 0) {
+            throw new ValidacionException("No tienes saldo suficiente para esta operación");
+        }
+
+        BigDecimal saldoDespuesDeRetiro = cuenta.getSaldo().subtract(monto);
+        if (saldoDespuesDeRetiro.compareTo(cuenta.getSaldoMinimo()) < 0) {
+            throw new ValidacionException("El retiro dejaría la cuenta por debajo del saldo mínimo de $" + cuenta.getSaldoMinimo());
+        }
+    }
+
+    private void validarLimiteRetiroDiario(Cuenta cuenta, BigDecimal monto) {
+        LocalDateTime inicioDelDia = LocalDate.now().atStartOfDay();
+        LocalDateTime finDelDia = LocalDate.now().atTime(23, 59, 59);
+        List<Transaccion> transaccionesDelDia = listarTransaccionesPorFechaHora(cuenta.getId(), inicioDelDia, finDelDia);
+
+        List<Transaccion> retirosDeHoy = transaccionesDelDia.stream()
+                .filter(transaccion -> transaccion.getTipoTransaccion().equals(TipoTransaccion.RETIRO))
+                .toList();
+
+        BigDecimal montoDiario = retirosDeHoy.stream()
+                .map(Transaccion::getMonto)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalConNuevoRetiro = montoDiario.add(monto);
+        if (totalConNuevoRetiro.compareTo(cuenta.getLimiteRetiroDiario()) > 0) {
+            throw new ValidacionException("El retiro excede el límite diario de $" + cuenta.getLimiteRetiroDiario() +
+                    ". Ya retiraste $" + montoDiario + " hoy.");
+        }
+
+    }
+
+
     private Transaccion crearTransaccionRetiro(RetiroRequestDTO retiroDto, Cuenta cuenta) {
         Transaccion transaccion = new Transaccion();
         transaccion.setTipoTransaccion(TipoTransaccion.RETIRO);
-        transaccion.setEstadoTransaccion(EstadoTransaccion.PENDIENTE);
+        transaccion.setEstado(EstadoTransaccion.PENDIENTE);
         transaccion.setCuentaDestino(null);
         transaccion.setCuentaOrigen(cuenta);
         transaccion.setMonto(retiroDto.monto());
@@ -119,7 +155,7 @@ public class TransaccionService implements ITransaccionService {
 
         validarTransferencia(transferenciaDto.monto(), cuentaDestino, cuentaOrigen);
         Transaccion transaccion = crearTransaccionTransferencia(transferenciaDto, cuentaDestino, cuentaOrigen);
-        transaccion.setEstadoTransaccion(EstadoTransaccion.COMPLETADA);
+        transaccion.setEstado(EstadoTransaccion.COMPLETADA);
         actualizarSaldoRetiro(transferenciaDto.monto(), cuentaOrigen);
         actualizarSaldoDeposito(transferenciaDto.monto(), cuentaDestino);
 
@@ -136,6 +172,10 @@ public class TransaccionService implements ITransaccionService {
 
     private void validarTransferencia(BigDecimal monto, Cuenta cuentaDestino, Cuenta cuentaOrigen) {
 
+        if (monto.compareTo(cuentaOrigen.getLimiteTransferencia()) > 0) {
+            throw new ValidacionException("El monto excede el límite de transferencia de $" + cuentaOrigen.getLimiteTransferencia());
+        }
+
         if (cuentaDestino.equals(cuentaOrigen)) {
             throw new ValidacionException("No se puede transferir a uno mismo");
 
@@ -145,15 +185,17 @@ public class TransaccionService implements ITransaccionService {
             throw new ValidacionException("Cuentas inactivas");
         }
 
-        validarSaldo(monto, cuentaOrigen);
+        validarSaldoRetiro(monto, cuentaOrigen);
+        validarLimiteRetiroDiario(cuentaOrigen, monto);
     }
+
 
     private Transaccion crearTransaccionTransferencia(TransferenciaRequestDTO transferenciaDto,
                                                      Cuenta cuentaDestino,Cuenta cuentaOrigen)
     {
         Transaccion transaccion = new Transaccion();
         transaccion.setTipoTransaccion(TipoTransaccion.TRANSFERENCIA);
-        transaccion.setEstadoTransaccion(EstadoTransaccion.PENDIENTE);
+        transaccion.setEstado(EstadoTransaccion.PENDIENTE);
         transaccion.setCuentaDestino(cuentaDestino);
         transaccion.setCuentaOrigen(cuentaOrigen);
         transaccion.setMonto(transferenciaDto.monto());
@@ -185,6 +227,11 @@ public class TransaccionService implements ITransaccionService {
     public List<TransaccionResponseDTO> listarTransaccionesPorEstado(EstadoTransaccion estado){
         return transaccionRepository.findByEstado(estado).stream()
                 .map(TransaccionMapper::toResponseDto)
+                .toList();
+    }
+
+    protected List<Transaccion> listarTransaccionesPorFechaHora(Long cuentaId,LocalDateTime fechaInicio, LocalDateTime fechaFin){
+        return transaccionRepository.findByCuentaOrigenIdAndFechaHoraBetween(cuentaId,fechaInicio,fechaFin).stream()
                 .toList();
     }
 
